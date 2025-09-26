@@ -5,6 +5,9 @@ from pathlib import Path
 from nodeconversion import *
 
 def clean_dir_content(dir):
+    # kind of discovered pathlib and using it here
+    Path(dir).mkdir(parents=True,exist_ok=True)
+    # older code without pathlib
     for entry in os.listdir(dir):
         path = os.path.join(dir, entry)
         if os.path.isfile(path):
@@ -36,7 +39,7 @@ def extract_title(markdown):
         raise Exception("No header in this file, I can't extract a title from it")
     return m.group(1)
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     with open(from_path, "r", encoding="utf-8") as f:
         markdown = f.read()
     with open(template_path, "r", encoding="utf-8") as f:
@@ -44,12 +47,14 @@ def generate_page(from_path, template_path, dest_path):
     html_markdown = markdown_to_html_node(markdown).to_html()
     title = extract_title(markdown)
     html_out = html_template.replace("{{ Title }}", title).replace("{{ Content }}", html_markdown)
+    html_out = html_out.replace("href=\"/", f"href=\"{basepath}")
+    html_out = html_out.replace("src=\"/", f"src=\"{basepath}")
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)  # Ensure parent dirs exist
     with open(dest_path, "w", encoding="utf-8") as f:
         f.write(html_out)
     return f"Generating page from {from_path} to {dest_path} using {template_path}"
 
-def generate_site(source_dir, template, target_dir):
+def generate_site(source_dir, template, target_dir, basepath):
     log = []
     for root, dirs, files in os.walk(source_dir):
         rel_path = os.path.relpath(root, source_dir)
@@ -59,6 +64,6 @@ def generate_site(source_dir, template, target_dir):
         for file in files:
             src_file = os.path.join(root, file)
             dst_file = os.path.join(target_root, f"{Path(file).stem}.html")
-            gen_log = generate_page(src_file, template, dst_file)
+            gen_log = generate_page(src_file, template, dst_file, basepath)
             log.append( gen_log )
     return log
